@@ -8,6 +8,8 @@ incident_number = 0
 
 def packetcallback(packet):
   global incident_number
+  global ftp_username
+  global ftp_password
 
   try:
     # Detect NULL scan 
@@ -16,18 +18,18 @@ def packetcallback(packet):
         print(f"ALERT #{incident_number}: NULL scan is detected from {packet[IP].src} (TCP)!")
   
     # Detect FIN scan
-    if packet[TCP].flags == "F":
+    elif packet[TCP].flags == "F":
         incident_number += 1
         print(f"ALERT #{incident_number}: FIN scan is detected from {packet[IP].src} (TCP)!")
     
     # Detect Xmas scan
-    if packet[TCP].flags == "FPU":
+    elif packet[TCP].flags == "FPU":
         incident_number += 1
         print(f"ALERT #{incident_number}: Xmas scan is detected from {packet[IP].src} (TCP)!")
     
     # Detect usernames and passwords sent in-the-clear via HTTP Basic Authentication
-    if packet[TCP].dport == 80 or packet[TCP].sport == 80:
-        req = packet.getlayer('HTTP Request')
+    if packet[TCP].dport == 80:
+        req = packet.getlayer(http.HTTPRequest)
 
         if req:
             auth = req.Authorization
@@ -44,7 +46,7 @@ def packetcallback(packet):
             print(f"ALERT #{incident_number}: Nikto scan is detected from {packet[IP].src} (TCP)!")
                     
     # Detect usernames and passwords sent in-the-clear via IMAP
-    if packet[TCP].dport == 143 or packet[TCP].sport == 143:
+    elif packet[TCP].dport == 143:
         
         payload = packet[TCP].load.decode("ascii").strip()
         if "LOGIN" in payload:
@@ -55,11 +57,9 @@ def packetcallback(packet):
             print(f"ALERT #{incident_number}: Usernames and passwords sent in-the-clear (IMAP) (username: {username}, password: {password})")
 
     # Detect usernames and passwords sent in-the-clear via FTP
-    if packet[TCP].dport == 21 or packet[TCP].sport == 21:
+    elif packet[TCP].dport == 21:
         
         payload = packet[TCP].load.decode("ascii").strip()
-        global ftp_username
-        global ftp_password
         if "USER" in payload:
             ftp_username = payload.split("USER")[1].strip()
         if "PASS" in payload:
@@ -69,26 +69,26 @@ def packetcallback(packet):
             print(f"ALERT #{incident_number}: Usernames and passwords sent in-the-clear (FTP) (username: {ftp_username}, password: {ftp_password})")
             ftp_username, ftp_password = None, None
 
-    # Detect SMB scan
-    if packet[TCP].dport in [137, 138, 139, 445] or packet[TCP].sport in [137, 138, 139, 445]:
+    # Detect SMB Protocol scan
+    elif packet[TCP].dport in [137, 138, 139, 445]:
         incident_number += 1
         print(f"ALERT #{incident_number}: Scanning for SMB Protocol detected from {packet[IP].src} (TCP)!")
 
     # Detect Remote Desktop Protocol (RDP) 
-    if packet[TCP].dport == 3389 or packet[TCP].sport == 3389:
+    elif packet[TCP].dport == 3389:
         incident_number += 1
-        print(f"ALERT #{incident_number}: Scanning for RDP scan is detected from {packet[IP].src} (TCP)!")
+        print(f"ALERT #{incident_number}: Scanning for RDP is detected from {packet[IP].src} (TCP)!")
     
-    # Detect VNC scan
-    if packet[TCP].dport == 5900 or packet[TCP].sport == 5900:
+    # Detect VNC instances scan
+    elif packet[TCP].dport == 5900:
         incident_number += 1
         print(f"ALERT #{incident_number}: Scanning for VNC instance detected from {packet[IP].src} (TCP)!")
         
-
   except Exception as e:
     # Uncomment the below and comment out `pass` for debugging, find error(s)
-    print(e)
-    #pass
+    # print(f"Error processing packet: {packet}")
+    # print(f"Exception: {e}")
+    pass
 
 # DO NOT MODIFY THE CODE BELOW
 parser = argparse.ArgumentParser(description='A network sniffer that identifies basic vulnerabilities')
