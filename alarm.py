@@ -2,6 +2,7 @@
 
 from scapy.all import *
 from scapy.layers import http
+import base64
 import argparse
 
 incident_number = 0
@@ -36,7 +37,7 @@ def packetcallback(packet):
         
             if auth and auth.startswith(b'Basic'):
               incident_number += 1
-              username, password = base64_bytes(auth.split(None, 1)[1]).split(b':', 1)
+              username, password = base64.b64decode(auth.split(None, 1)[1]).split(b':', 1)
               print(f"ALERT #{incident_number}: Usernames and passwords sent in-the-clear (HTTP) (username: {username.decode()}, password: {password.decode()})")
 
         # Detect Nikto scan 
